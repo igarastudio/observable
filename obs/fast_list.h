@@ -9,6 +9,8 @@
 #pragma once
 
 #include <algorithm>
+#include <atomic>
+#include <cassert>
 #include <functional>
 #include <vector>
 
@@ -17,6 +19,7 @@ namespace obs {
 template<typename T>
 class fast_list {
   std::vector<T*> m_list;
+  std::atomic<unsigned int> m_iterating = { 0 };
 
 public:
   using iterator = typename std::vector<T*>::iterator;
@@ -28,14 +31,37 @@ public:
   iterator begin() { return m_list.begin(); }
   iterator end() { return m_list.end(); }
 
+  void start_iteration() {
+    ++m_iterating;
+  }
+
+  void end_iteration() {
+    assert(m_iterating > 0);
+    --m_iterating;
+
+    // Clean up deleted items when we were iterating
+    if (m_iterating == 0) {
+      for (auto it = m_list.begin(); it != m_list.end(); ) {
+        if (*it == nullptr)
+          it = m_list.erase(it);
+        else
+          ++it;
+      }
+    }
+  }
+
   void push_back(T* value) {
     m_list.push_back(value);
   }
 
   void erase(T* value) {
     auto it = std::find(m_list.begin(), m_list.end(), value);
-    if (it != m_list.end())
-      m_list.erase(it);
+    if (it != m_list.end()) {
+      if (m_iterating > 0)
+        *it = nullptr;
+      else
+        m_list.erase(it);
+    }
   }
 };
 

@@ -32,7 +32,8 @@ public:
 
   template<typename ...Args>
   void notify_observers(void (observer_type::*method)(Args...), Args ...args) {
-    for (auto observer : iterate_list(m_observers)) {
+    scoped_iteration<list_type> iter(m_observers);
+    for (auto observer : m_observers) {
       if (observer)
         (observer->*method)(std::forward<Args>(args)...);
     }

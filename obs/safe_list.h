@@ -344,6 +344,9 @@ public:
     return iterator(*this, m_last);
   }
 
+  void start_iteration() { }
+  void end_iteration() { }
+
   void ref() {
 #if !defined(NDEBUG)
     int v =
