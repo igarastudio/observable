@@ -19,6 +19,7 @@ namespace obs {
 template<typename T>
 class fast_list {
   std::vector<T*> m_list;
+  std::vector<T*> m_news;
   std::atomic<unsigned int> m_iterating = { 0 };
 
 public:
@@ -39,19 +40,27 @@ public:
     assert(m_iterating > 0);
     --m_iterating;
 
-    // Clean up deleted items when we were iterating
     if (m_iterating == 0) {
+      // Clean up deleted items when we were iterating
       for (auto it = m_list.begin(); it != m_list.end(); ) {
         if (*it == nullptr)
           it = m_list.erase(it);
         else
           ++it;
       }
+      // Add new items when we were iterating
+      if (!m_news.empty()) {
+        m_list.insert(m_list.end(), m_news.begin(), m_news.end());
+        m_news.clear();
+      }
     }
   }
 
   void push_back(T* value) {
-    m_list.push_back(value);
+    if (m_iterating > 0)
+      m_news.push_back(value);
+    else
+      m_list.push_back(value);
   }
 
   void erase(T* value) {
@@ -61,6 +70,11 @@ public:
         *it = nullptr;
       else
         m_list.erase(it);
+    }
+    else if (m_iterating > 0) {
+      it = std::find(m_news.begin(), m_news.end(), value);
+      if (it != m_news.end())
+        m_news.erase(it);
     }
   }
 };
